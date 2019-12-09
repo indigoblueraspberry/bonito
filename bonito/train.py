@@ -81,16 +81,19 @@ def main(args):
     model_directory, stats_directory = handle_output_directory(os.path.abspath(args.output_directory))
 
     # initialize the training
-    init(args.seed, args.device)
-    device = torch.device(args.device)
+    gpu_mode = args.gpu_mode
+    init(args.seed, gpu_mode)
 
     # load training data
     input_directory = os.path.abspath(args.input_directory)
 
-    sys.stderr.write(TextColor.GREEN + "INFO: LOADING " + str(args.chunks) + " CHUNKS FROM: " + str(input_directory) + "\n" + TextColor.END)
+    sys.stderr.write(TextColor.GREEN + "INFO: LOADING " + str(args.chunk_size) +
+                     " CHUNKS FROM: " + str(input_directory) + "\n" + TextColor.END)
     sys.stderr.flush()
-    chunks, chunk_lengths, targets, target_lengths = load_data(input_directory, limit=args.chunks, shuffle=True)
-    sys.stderr.write(TextColor.GREEN + "INFO: LOADED " + str(len(chunks)) + " CHUNKS SUCCESSFULLY" + "\n" + TextColor.END )
+
+    chunks, chunk_lengths, targets, target_lengths = load_data(input_directory, limit=args.chunk_size, shuffle=True)
+    sys.stderr.write(TextColor.GREEN + "INFO: LOADED " + str(len(chunks)) +
+                     " CHUNKS SUCCESSFULLY" + "\n" + TextColor.END )
     sys.stderr.flush()
 
     # split training data into train-test
@@ -115,8 +118,8 @@ def main(args):
         exit(1)
 
     # train and test dataloaders
-    train_loader = DataLoader(train_dataset, batch_size=args.batch, shuffle=True, num_workers=4, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=args.batch, num_workers=4, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True)
+    test_loader = DataLoader(test_dataset, batch_size=args.batch_size, num_workers=4, pin_memory=True)
 
     # load the model
     config = toml.load(args.config)
@@ -125,47 +128,48 @@ def main(args):
     sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL\n" + TextColor.END)
     sys.stderr.flush()
     model = Model(config)
+    sys.stderr.write(TextColor.GREEN + "INFO: MODEL LOADED\n" + TextColor.END)
 
+    # this is for re-training but needs to be updated, this is not a proper way to load model weights
+    # optimizer weights need to be loaded too.
+    # weights = os.path.join(model_directory, 'weights.tar')
+    #
+    # # if path exists, then load weights?
+    # if os.path.exists(weights):
+    #     model.load_state_dict(torch.load(weights))
 
-    # save initial weights
-    weights = os.path.join(model_directory, 'weights.tar')
-    # if path exists, then load weights?
-    if os.path.exists(weights):
-        model.load_state_dict(torch.load(weights))
-
-    model.to(device)
-    model.train()
-
+    # save the config file to the model directory
     toml.dump({**config, **argsdict}, open(os.path.join(model_directory, 'config.toml'), 'w'))
-    optimizer = AdamW(model.parameters(), amsgrad=True, lr=args.lr)
-
-    epoch = 0
-    model_filename = "BONITO_MODEL_EPOCH_" + str(epoch) + ".pkl"
-    save_model(model, optimizer, epoch, os.path.join(model_directory, model_filename))
+    optimizer = AdamW(model.parameters(), amsgrad=True, lr=args.learning_rate)
 
     param_count = sum(p.numel() for p in model.parameters() if p.requires_grad)
     sys.stderr.write(TextColor.CYAN + "INFO: TOTAL TRAINABLE PARAMETERS:\t" + str(param_count) + "\n" + TextColor.END)
 
-    if args.amp:
+    if args.nvidia_apex:
         try:
             model, optimizer = amp.initialize(model, optimizer, opt_level="O1", verbosity=0)
         except NameError:
-            sys.stderr.write(TextColor.RED + "EROOR : Cannot use AMP: Apex package needs to be installed manually, See https://github.com/NVIDIA/apex\n")
+            sys.stderr.write(TextColor.RED + "EROOR : Cannot use AMP: Apex package needs to be installed manually, "
+                                             "See https://github.com/NVIDIA/apex\n")
             sys.stderr.flush()
             exit(1)
 
+    # get the stride and alphabets. They will not be a part of the model object if we wrap it around dataparallel class
     stride = config['block'][0]['stride'][0]
     alphabet = config['labels']['labels']
-    model = torch.nn.DataParallel(model).cuda()
+
+    if gpu_mode:
+        model = torch.nn.DataParallel(model).cuda()
+
     scheduler = CosineAnnealingLR(optimizer, args.epochs * len(train_loader), eta_min=0, last_epoch=-1)
-    log_interval = np.floor(len(train_dataset) / args.batch * 0.10)
+    log_interval = np.floor(len(train_dataset) / args.batch_size * 0.10)
 
     for epoch in range(1, args.epochs + 1):
 
         train_loss, duration = train(
-            log_interval, model, device, train_loader, optimizer, epoch, stride, alphabet, use_amp=args.amp
+            log_interval, model, gpu_mode, train_loader, optimizer, epoch, stride, alphabet, use_amp=args.nvidia_apex
         )
-        test_loss, mean, median = test(model, device, test_loader, stride, alphabet)
+        test_loss, mean, median = test(model, gpu_mode, test_loader, stride, alphabet)
 
         model_filename = "BONITO_MODEL_EPOCH_" + str(epoch) + ".pkl"
         save_model(model, optimizer, epoch, os.path.join(model_directory, model_filename))
@@ -191,17 +195,94 @@ def argparser():
         formatter_class=ArgumentDefaultsHelpFormatter,
         add_help=False
     )
-    parser.add_argument("input_directory")
-    parser.add_argument("output_directory")
-    parser.add_argument("config")
-    parser.add_argument("--device", default="cuda")
-    parser.add_argument("--lr", default=1e-3, type=float)
-    parser.add_argument("--seed", default=25, type=int)
-    parser.add_argument("--epochs", default=1, type=int)
-    parser.add_argument("--batch", default=32, type=int)
-    # chunk = 0 will mean that no downsampling will occur
-    parser.add_argument("--chunks", default=1000000, type=int)
-    parser.add_argument("--validation_split", default=0.99, type=float)
-    parser.add_argument("--amp", action="store_true", default=False)
-    parser.add_argument("-f", "--force", action="store_true", default=False)
+    parser.add_argument(
+        "-i",
+        "--input_directory",
+        type=str,
+        required=True,
+        help="Path to the input directory."
+    )
+    parser.add_argument(
+        "-o",
+        "--output_directory",
+        type=str,
+        required=True,
+        help="Path to the output directory."
+    )
+    parser.add_argument(
+        "-c",
+        "--config",
+        type=str,
+        required=True,
+        help="Config file for the model."
+    )
+    parser.add_argument(
+        "-lr",
+        "--learning_rate",
+        type=float,
+        required=False,
+        default=1e-3,
+        help="Learning rate."
+    )
+    parser.add_argument(
+        "-s",
+        "--seed",
+        type=int,
+        required=False,
+        default=25,
+        help="Random seed."
+    )
+    parser.add_argument(
+        "-e",
+        "--epochs",
+        type=int,
+        required=False,
+        default=1,
+        help="Epoch size for training iteration."
+    )
+    parser.add_argument(
+        "-b",
+        "--batch_size",
+        type=int,
+        required=False,
+        default=16,
+        help="Batch size."
+    )
+    parser.add_argument(
+        "-cs",
+        "--chunk_size",
+        type=int,
+        required=False,
+        default=1000000,
+        help="Number of chunks to train on."
+    )
+    parser.add_argument(
+        "-vs",
+        "--validation_split",
+        type=float,
+        required=False,
+        default=0.99,
+        help="Fraction of data to be used for training. Rest will be used for testing"
+    )
+    parser.add_argument(
+        "-amp",
+        "--nvidia_apex",
+        default=False,
+        action='store_true',
+        help="Use nvidia apex for mixed precision and distributed training."
+    )
+    parser.add_argument(
+        "-g",
+        "--gpu_mode",
+        default=False,
+        action='store_true',
+        help="If set then PyTorch will use GPUs for inference. CUDA required."
+    )
+    parser.add_argument(
+        "-f",
+        "--force",
+        default=False,
+        action='store_true',
+        help="Not sure exactly what it does."
+    )
     return parser

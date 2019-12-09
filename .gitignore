@@ -2,6 +2,7 @@
 *~
 .venv/
 venv3/
+data/
 *.lprof
 *.egg-info/
 bonito/data/*.npy
@@ -12,3 +13,4 @@ dist/
 *.csv
 *.fast*
 *.sam
+*.idea/

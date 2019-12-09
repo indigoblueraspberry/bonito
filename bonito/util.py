@@ -29,7 +29,7 @@ __dir__ = os.path.dirname(__file__)
 split_cigar = re.compile(r"(?P<len>\d+)(?P<op>\D+)")
 
 
-def init(seed, device):
+def init(seed, gpu_mode):
     """
     Initialise random libs and setup cudnn
 
@@ -38,7 +38,9 @@ def init(seed, device):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
-    if device == "cpu": return
+    if gpu_mode is False:
+        return
+
     torch.backends.cudnn.enabled = True
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
