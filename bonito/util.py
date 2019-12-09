@@ -4,11 +4,13 @@ Bonito utils
 
 import re
 import os
+import sys
 from glob import glob
 from itertools import groupby
 from collections import defaultdict
 
 from bonito.model import Model
+from bonito.TextColor import TextColor
 
 import toml
 import torch
@@ -58,16 +60,24 @@ def decode_ctc(predictions, labels):
     return ''.join([labels[b] for b, g in groupby(path) if b])
 
 
-def load_data(shuffle=False, limit=None):
+def load_data(input_directory, shuffle=False, limit=None):
     """
     Load the training data
     """
-    chunks = np.load(os.path.join(__dir__, "data", "chunks.npy"), mmap_mode='r')
-    chunk_lengths = np.load(os.path.join(__dir__, "data", "chunk_lengths.npy"), mmap_mode='r')
-    targets = np.load(os.path.join(__dir__, "data", "references.npy"), mmap_mode='r')
-    target_lengths = np.load(os.path.join(__dir__, "data", "reference_lengths.npy"), mmap_mode='r')
+    chunks = np.load(os.path.join(input_directory, "chunks.npy"), mmap_mode='r')
+    chunk_lengths = np.load(os.path.join(input_directory, "chunk_lengths.npy"), mmap_mode='r')
+    targets = np.load(os.path.join(input_directory, "references.npy"), mmap_mode='r')
+    target_lengths = np.load(os.path.join(input_directory, "reference_lengths.npy"), mmap_mode='r')
 
-    if limit:
+    sys.stderr.write(TextColor.GREEN + "INFO: TOTAL AVAILABLE CHUNKS: " + str(len(chunks)) + "\n" + TextColor.END)
+    sys.stderr.flush()
+
+    if limit > len(chunks):
+        limit = 0
+        sys.stderr.write(TextColor.YELLOW + "WARN: TOTAL AVAILABLE CHUNKS: " + str(len(chunks)) + " IS LESS THAN CHUNK LIMIT: " + str(limit) + ". WILL USE ALL CHUNKS.\n" + TextColor.END)
+        sys.stderr.flush()
+
+    if limit > 0 and limit:
         chunks = chunks[:limit]
         chunk_lengths = chunk_lengths[:limit]
         targets = targets[:limit]
@@ -129,6 +139,7 @@ def parasail_to_sam(result, seq):
 
     mid = cigstr[len(prefix):]
     end_clip = len(seq) - result.end_query - 1
+
     suf = '{}S'.format(end_clip) if end_clip > 0 else ''
     new_cigstr = ''.join((pre, mid, suf))
     return rstart, new_cigstr
@@ -142,7 +153,7 @@ def accuracy(ref, seq, balanced=False):
     counts = defaultdict(int)
     _, cigar = parasail_to_sam(alignment, seq)
 
-    for count, op  in re.findall(split_cigar, cigar):
+    for count, op in re.findall(split_cigar, cigar):
         counts[op] += int(count)
 
     if balanced:

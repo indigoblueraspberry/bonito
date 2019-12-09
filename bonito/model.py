@@ -13,25 +13,6 @@ activations = {
 }
 
 
-class Model(Module):
-    """
-    Model template for QuartzNet style architectures
-
-    https://arxiv.org/pdf/1910.10261.pdf
-    """
-    def __init__(self, config):
-        super(Model, self).__init__()
-        self.stride = config['block'][0]['stride'][0]
-        self.alphabet = config['labels']['labels']
-        self.features = config['block'][-1]['filters']
-        self.encoder = Encoder(config)
-        self.decoder = Decoder(self.features, len(self.alphabet))
-
-    def forward(self, x):
-        encoded = self.encoder(x)
-        return self.decoder(encoded)
-
-
 class Encoder(Module):
     """
     Builds the model encoder
@@ -179,3 +160,22 @@ class Decoder(Module):
     def forward(self, x):
         x = self.layers(x[-1])
         return nn.functional.log_softmax(x.transpose(1, 2), dim=2)
+
+
+class Model(Module):
+    """
+    Model template for QuartzNet style architectures
+
+    https://arxiv.org/pdf/1910.10261.pdf
+    """
+    def __init__(self, config):
+        super(Model, self).__init__()
+        self.stride = config['block'][0]['stride'][0]
+        self.alphabet = config['labels']['labels']
+        self.features = config['block'][-1]['filters']
+        self.encoder = Encoder(config)
+        self.decoder = Decoder(self.features, len(self.alphabet))
+
+    def forward(self, x):
+        encoded = self.encoder(x)
+        return self.decoder(encoded)
