@@ -135,7 +135,6 @@ def main(args):
 
     model.to(device)
     model.train()
-    model = torch.nn.DataParallel(model).cuda()
 
     toml.dump({**config, **argsdict}, open(os.path.join(model_directory, 'config.toml'), 'w'))
     optimizer = AdamW(model.parameters(), amsgrad=True, lr=args.lr)
@@ -155,6 +154,7 @@ def main(args):
             sys.stderr.flush()
             exit(1)
 
+    model = torch.nn.DataParallel(model).cuda()
     scheduler = CosineAnnealingLR(optimizer, args.epochs * len(train_loader), eta_min=0, last_epoch=-1)
     log_interval = np.floor(len(train_dataset) / args.batch * 0.10)
 
