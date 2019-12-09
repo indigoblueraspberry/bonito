@@ -154,6 +154,8 @@ def main(args):
             sys.stderr.flush()
             exit(1)
 
+    stride = config['block'][0]['stride'][0]
+    alphabet = config['labels']['labels']
     model = torch.nn.DataParallel(model).cuda()
     scheduler = CosineAnnealingLR(optimizer, args.epochs * len(train_loader), eta_min=0, last_epoch=-1)
     log_interval = np.floor(len(train_dataset) / args.batch * 0.10)
@@ -161,9 +163,9 @@ def main(args):
     for epoch in range(1, args.epochs + 1):
 
         train_loss, duration = train(
-            log_interval, model, device, train_loader, optimizer, epoch, use_amp=args.amp
+            log_interval, model, device, train_loader, optimizer, epoch, stride, alphabet, use_amp=args.amp
         )
-        test_loss, mean, median = test(model, device, test_loader)
+        test_loss, mean, median = test(model, device, test_loader, stride, alphabet)
 
         model_filename = "BONITO_MODEL_EPOCH_" + str(epoch) + ".pkl"
         save_model(model, optimizer, epoch, os.path.join(model_directory, model_filename))
