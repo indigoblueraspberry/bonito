@@ -6,7 +6,6 @@ import time
 import sys
 from itertools import starmap
 from tqdm import tqdm
-import torchnet.meter as meter
 
 from bonito.util import decode_ctc, decode_ref, accuracy
 from bonito.TextColor import TextColor
