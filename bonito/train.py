@@ -109,11 +109,11 @@ def main(args):
     sys.stderr.flush()
 
     if not train_dataset:
-        sys.stderr.write(TextColor.RED + "ERROR: NO CHUNK AVAILABLE FOR TRAINING\n" + TextColor.END)
+        sys.stderr.write(TextColor.RED + "ERROR: NO CHUNKS AVAILABLE FOR TRAINING\n" + TextColor.END)
         sys.stderr.flush()
         exit(1)
     if not test_dataset:
-        sys.stderr.write(TextColor.RED + "ERROR: NO CHUNK AVAILABLE FOR TEST\n" + TextColor.END)
+        sys.stderr.write(TextColor.RED + "ERROR: NO CHUNKS AVAILABLE FOR TEST\n" + TextColor.END)
         sys.stderr.flush()
         exit(1)
 
@@ -128,6 +128,10 @@ def main(args):
     sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL\n" + TextColor.END)
     sys.stderr.flush()
     model = Model(config)
+    if gpu_mode:
+        model = model.cuda()
+
+    model.train()
     sys.stderr.write(TextColor.GREEN + "INFO: MODEL LOADED\n" + TextColor.END)
 
     # this is for re-training but needs to be updated, this is not a proper way to load model weights
