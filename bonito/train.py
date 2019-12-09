@@ -126,6 +126,7 @@ def main(args):
     sys.stderr.flush()
     model = Model(config)
 
+
     # save initial weights
     weights = os.path.join(model_directory, 'weights.tar')
     # if path exists, then load weights?
@@ -134,6 +135,7 @@ def main(args):
 
     model.to(device)
     model.train()
+    model = torch.nn.DataParallel(model).cuda()
 
     toml.dump({**config, **argsdict}, open(os.path.join(model_directory, 'config.toml'), 'w'))
     optimizer = AdamW(model.parameters(), amsgrad=True, lr=args.lr)
