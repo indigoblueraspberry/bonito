@@ -1,7 +1,7 @@
 #!/bin/bash
 
 num_chunks=1000000
-url="https://nanoporetech.box.com/shared/static/cmh91cxupa0are1kc3z9aok425m75vrb.hdf5"
+url="https://storage.googleapis.com/kishwar-helen/bonito_data/bonito-training-data.hdf5"
 outdir="bonito/data"
 outfile="${outdir}/bonito-training-data.hdf5"
 
