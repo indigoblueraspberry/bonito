@@ -127,7 +127,7 @@ def main(args):
 
     sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL\n" + TextColor.END)
     sys.stderr.flush()
-    model = load_model(args.model, args.config, args.gpu_mode)
+    model, stride, alphabet = load_model(args.model, args.config, args.gpu_mode)
     model.eval()
 
     output_directory = handle_output_directory(os.path.abspath(args.output_directory))
@@ -176,11 +176,11 @@ def main(args):
                 predictions = np.concatenate(predictions)
 
                 if len(predictions) > 1:
-                    predictions = stitch(predictions, int(args.overlap / model.stride / 2))
+                    predictions = stitch(predictions, int(args.overlap / stride / 2))
                 else:
                     predictions = np.squeeze(predictions, axis=0)
 
-                sequence = decode_ctc(predictions, model.alphabet)
+                sequence = decode_ctc(predictions, alphabet)
 
                 if sequence is not None and len(sequence) > 0:
                     fasta_file.write(str(read_id) + "\n")

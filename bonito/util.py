@@ -128,7 +128,10 @@ def load_model(model_path, config_path, gpu_mode):
     if gpu_mode:
         model = torch.nn.DataParallel(model).cuda()
 
-    return model
+    stride = config['block'][0]['stride'][0]
+    alphabet = config['labels']['labels']
+
+    return model, stride, alphabet
 
 
 def parasail_to_sam(result, seq):
