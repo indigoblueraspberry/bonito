@@ -4,13 +4,15 @@ Bonito Basecaller
 
 import sys
 import time
+import os
+import h5py
 from math import ceil
 from glob import glob
 from textwrap import wrap
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from bonito.util import load_model, decode_ctc
-
+from bonito.TextColor import TextColor
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -60,6 +62,16 @@ def preprocess(x, min_samples=1000):
     return norm_signal
 
 
+def check_fast5(fast5_filepath):
+    try:
+        test_open = h5py.File(fast5_filepath, mode="r")
+    except:
+        # tried to narrow down into specific error but h5py throws different errors in different versions of python
+        return False
+    test_open.close()
+    return True
+
+
 def get_raw_data(fast5_filepath):
     """
     Get the raw signal and read id from the fast5 files
@@ -94,18 +106,48 @@ def stitch(predictions, overlap):
     return np.concatenate(stitched)
 
 
+def handle_output_directory(output_dir):
+    """
+    Process the output directory and return a valid directory where we save the output
+    :param output_dir: Output directory path
+    :return:
+    """
+    timestr = time.strftime("%m%d%Y_%H%M%S")
+    # process the output directory
+    if output_dir[-1] != "/":
+        output_dir += "/"
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    return output_dir
+
+
 def main(args):
 
-    sys.stderr.write("> loading model\n")
-    model = load_model(args.model_directory, args.device, weights=int(args.weights))
+    sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL\n" + TextColor.END)
+    sys.stderr.flush()
+    model = load_model(args.model, args.config, args.gpu_mode)
+    model.eval()
+
+    output_directory = handle_output_directory(os.path.abspath(args.output_directory))
+    fasta_file = open(output_directory + args.file_prefix + ".fasta", 'w')
 
     num_reads = 0
     num_chunks = 0
 
     t0 = time.perf_counter()
-    sys.stderr.write("> calling\n")
+    sys.stderr.write(TextColor.GREEN + "STARTING INFERENCE\n" + TextColor.END)
+    sys.stderr.flush()
 
-    for fast5 in tqdm(glob("%s/*fast5" % args.reads_directory), ascii=True):
+    for fast5 in tqdm(glob("%s/*fast5" % args.reads_directory), ascii=True, ncols=100,
+                      desc=TextColor.BLUE + "INFERENCE"):
+        sys.stderr.write(TextColor.END)
+
+        if not check_fast5(fast5):
+            sys.stderr.write(TextColor.YELLOW + "\nWARNING: FAST5 FILE ERROR: " + fast5 + ". SKIPPING THIS FILE.\n" + TextColor.END)
+            sys.stderr.flush()
+            continue
 
         for read_id, raw_data in get_raw_data(fast5):
 
@@ -124,7 +166,10 @@ def main(args):
 
                 for i in range(ceil(len(chunks) / args.batchsize)):
                     batch = chunks[i*args.batchsize: (i+1)*args.batchsize]
-                    tchunks = torch.tensor(batch).to(args.device)
+                    tchunks = torch.tensor(batch)
+                    if args.gpu_mode:
+                        tchunks = tchunks.cuda()
+
                     probs = torch.exp(model(tchunks))
                     predictions.append(probs.cpu())
 
@@ -137,13 +182,13 @@ def main(args):
 
                 sequence = decode_ctc(predictions, model.alphabet)
 
-                print(">%s" % read_id)
-                print('\n'.join(wrap(sequence, 100)))
+                if sequence is not None and len(sequence) > 0:
+                    fasta_file.write(str(read_id) + "\n")
+                    fasta_file.write('\n'.join(wrap(sequence, 100)) + "\n")
 
     t1 = time.perf_counter()
-    sys.stderr.write("> completed reads: %s\n" % num_reads)
-    sys.stderr.write("> samples per second %.1E\n" % (num_chunks * args.chunksize / (t1 - t0)))
-    sys.stderr.write("> done\n")
+    sys.stderr.write(TextColor.GREEN + "INFO: TOTAL READS: %s\n" % num_reads + TextColor.END)
+    sys.stderr.write(TextColor.GREEN +  "INFO: SAMPLES PER SECOND %.1E\n" % (num_chunks * args.chunksize / (t1 - t0)) + TextColor.END)
 
 
 def argparser():
@@ -151,12 +196,74 @@ def argparser():
         formatter_class=ArgumentDefaultsHelpFormatter,
         add_help=False
     )
-    parser.add_argument("reads_directory")
-    parser.add_argument("model_directory")
-    parser.add_argument("--device", default="cuda")
-    parser.add_argument("--weights", default="0", type=str)
-    parser.add_argument("--batchsize", default=64, type=int)
-    parser.add_argument("--chunks", default=500, type=int)
-    parser.add_argument("--overlap", default=600, type=int)
-    parser.add_argument("--chunksize", default=2000, type=int)
+    parser.add_argument(
+        "-i",
+        "--reads_directory",
+        type=str,
+        required=True,
+        help="Path to the input directory containing fast5 files of reads."
+    )
+    parser.add_argument(
+        "-m",
+        "--model",
+        type=str,
+        required=True,
+        help="Path to the input directory containing fast5 files of reads."
+    )
+    parser.add_argument(
+        "-c",
+        "--config",
+        type=str,
+        required=True,
+        help="Path to the input directory containing fast5 files of reads."
+    )
+    parser.add_argument(
+        "-g",
+        "--gpu_mode",
+        default=False,
+        action='store_true',
+        help="If set then PyTorch will use GPUs for inference. CUDA required."
+    )
+    parser.add_argument(
+        "-o",
+        "--output_directory",
+        default="./bonito_outputs/",
+        type=str,
+        help="Path to output directory."
+    )
+    parser.add_argument(
+        "-p",
+        "--file_prefix",
+        default="Reads_bonito",
+        type=str,
+        help="Prefix to use for the output file."
+    )
+    parser.add_argument(
+        "-bs",
+        "--batchsize",
+        default=64,
+        type=int,
+        help="Batch size for inference."
+    )
+    parser.add_argument(
+        "-cs",
+        "--chunks",
+        default=500,
+        type=int,
+        help="Number of chunks for inference."
+    )
+    parser.add_argument(
+        "-ol",
+        "--overlap",
+        default=600,
+        type=int,
+        help="Overlap size for inference."
+    )
+    parser.add_argument(
+        "-csz",
+        "--chunksize",
+        default=2000,
+        type=int,
+        help="Chunk size for inference."
+    )
     return parser

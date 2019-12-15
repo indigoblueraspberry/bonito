@@ -95,21 +95,39 @@ def load_data(input_directory, shuffle=False, limit=None):
     return chunks, chunk_lengths, targets, target_lengths
 
 
-def load_model(dirname, device, weights=None):
+def load_model(model_path, config_path, gpu_mode):
     """
     Load a model from disk
     """
-    if not weights: # take the latest checkpoint
-        weight_files = glob(os.path.join(dirname, "weights_*.tar"))
-        weights = max([int(re.sub(".*_([0-9]+).tar", "\\1", w)) for w in weight_files])
+    if not os.path.exists(model_path):
+        sys.stderr.wrte("ERROR: MODEL DOES NOT EXIST. PLEASE CHECK MODEL PATH")
+        exit(1)
+    if not os.path.exists(config_path):
+        sys.stderr.wrte("ERROR: MODEL DOES NOT EXIST. PLEASE CHECK MODEL PATH")
+        exit(1)
 
-    device = torch.device(device)
-    config = os.path.join(dirname, 'config.toml')
-    weights = os.path.join(dirname, 'weights_%s.tar' % weights)
-    model = Model(toml.load(config))
-    model.to(device)
-    model.load_state_dict(torch.load(weights, map_location=device))
-    model.eval()
+    model_path = os.path.abspath(model_path)
+    checkpoint = torch.load(model_path, map_location='cpu')
+    config = toml.load(config_path)
+    model = Model(config)
+
+    model_state_dict = checkpoint['model_state_dict']
+
+    from collections import OrderedDict
+    new_state_dict = OrderedDict()
+
+    for k, v in model_state_dict.items():
+        name = k
+        if k[0:7] == 'module.':
+            name = k[7:]  # remove `module.`
+        new_state_dict[name] = v
+
+    model.load_state_dict(new_state_dict)
+    model.cpu()
+
+    if gpu_mode:
+        model = torch.nn.DataParallel(model).cuda()
+
     return model
 
 
