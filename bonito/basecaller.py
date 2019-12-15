@@ -163,7 +163,6 @@ def main(args):
             predictions = []
 
             with torch.no_grad():
-
                 for i in range(ceil(len(chunks) / args.batchsize)):
                     batch = chunks[i*args.batchsize: (i+1)*args.batchsize]
                     tchunks = torch.tensor(batch)
@@ -183,7 +182,7 @@ def main(args):
                 sequence = decode_ctc(predictions, alphabet)
 
                 if sequence is not None and len(sequence) > 0:
-                    fasta_file.write(str(read_id) + "\n")
+                    fasta_file.write(">"+str(read_id) + "\n")
                     fasta_file.write('\n'.join(wrap(sequence, 100)) + "\n")
 
     t1 = time.perf_counter()
