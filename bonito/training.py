@@ -72,6 +72,7 @@ def train(log_interval, model, gpu_mode, train_loader, optimizer, epoch, stride,
         progress_bar.refresh()
         progress_bar.update(1)
         progress_bar.set_description("Loss: " + str(loss.item()))
+    progress_bar.close()
 
     sys.stderr.write(TextColor.GREEN + "\nINFO: TRAIN LOSS: " + str(loss.item()) + "\n")
 
@@ -81,7 +82,7 @@ def train(log_interval, model, gpu_mode, train_loader, optimizer, epoch, stride,
 def test(model, gpu_mode, test_loader, stride, alphabet):
 
     model.eval()
-    test_loss = 0
+    test_loss = None
     predictions = []
     prediction_lengths = []
 
@@ -93,14 +94,18 @@ def test(model, gpu_mode, test_loader, stride, alphabet):
                 data, target = data.cuda(), target.cuda()
 
             log_probs = model(data)
-            test_loss += criterion(log_probs.transpose(1, 0), target, out_lengths / stride, lengths)
+            if test_loss is None:
+                test_loss = criterion(log_probs.transpose(1, 0), target, out_lengths / stride, lengths)
+            else:
+                test_loss += criterion(log_probs.transpose(1, 0), target, out_lengths / stride, lengths)
+
             predictions.append(torch.exp(log_probs).cpu())
             prediction_lengths.append(out_lengths / stride)
 
             progress_bar.refresh()
             progress_bar.update(1)
-            progress_bar.set_description("Test loss: " + str(test_loss))
-
+            progress_bar.set_description("Test loss: " + str(test_loss.item()))
+    progress_bar.close()
     sys.stderr.write(TextColor.GREEN + "\nValidation Loss:              %.4f" % (test_loss / batch_idx) + "\n")
 
     predictions = np.concatenate(predictions)
