@@ -72,10 +72,8 @@ def train(log_interval, model, gpu_mode, train_loader, optimizer, epoch, stride,
         progress_bar.refresh()
         progress_bar.update(1)
         progress_bar.set_description("Loss: " + str(loss.item()))
-        sys.stderr.flush()
 
-    sys.stderr.write(TextColor.GREEN + "\nINFO: TRAIN LOSS: " + str(loss.item()) + "\n\n")
-    sys.stderr.flush()
+    sys.stderr.write(TextColor.GREEN + "\nINFO: TRAIN LOSS: " + str(loss.item()) + "\n")
 
     return loss.item(), time.perf_counter() - t0
 
@@ -87,7 +85,7 @@ def test(model, gpu_mode, test_loader, stride, alphabet):
     predictions = []
     prediction_lengths = []
 
-    sys.stderr.write(TextColor.BLUE + "INFO: TEST STARTING" + "\n")
+    sys.stderr.write(TextColor.YELLOW + "INFO: TEST STARTING" + "\n")
     num_classes = 5
 
     with torch.no_grad():
@@ -104,7 +102,7 @@ def test(model, gpu_mode, test_loader, stride, alphabet):
             progress_bar.refresh()
             progress_bar.update(1)
             progress_bar.set_description("Loss: " + str(test_loss.item()))
-            sys.stderr.flush()
+
         progress_bar.close()
 
     predictions = np.concatenate(predictions)
@@ -121,9 +119,8 @@ def test(model, gpu_mode, test_loader, stride, alphabet):
     mean = np.mean(accuracies)
     median = np.median(accuracies)
 
-    sys.stderr.write(TextColor.GREEN + "\n\nValidation Loss:              %.4f" % (test_loss / batch_idx) + "\n")
+    sys.stderr.write(TextColor.GREEN + "\nValidation Loss:              %.4f" % (test_loss / batch_idx) + "\n")
     sys.stderr.write("Validation Accuracy (mean):   %.3f%%" % max(0, mean) + "\n")
     sys.stderr.write("Validation Accuracy (median): %.3f%%" % max(0, median) + "\n" + TextColor.END)
-    sys.stderr.flush()
 
     return test_loss.item() / batch_idx, mean, median

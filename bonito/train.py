@@ -153,7 +153,7 @@ def main(args):
         try:
             model, optimizer = amp.initialize(model, optimizer, opt_level="O1", verbosity=0)
         except NameError:
-            sys.stderr.write(TextColor.RED + "EROOR : Cannot use AMP: Apex package needs to be installed manually, "
+            sys.stderr.write(TextColor.RED + "ERROR : Cannot use AMP: Apex package needs to be installed manually, "
                                              "See https://github.com/NVIDIA/apex\n")
             sys.stderr.flush()
             exit(1)
