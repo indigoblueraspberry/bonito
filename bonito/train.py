@@ -91,7 +91,10 @@ def main(args):
                      " CHUNKS FROM: " + str(input_directory) + "\n" + TextColor.END)
     sys.stderr.flush()
 
-    chunks, chunk_lengths, targets, target_lengths = load_data(input_directory, limit=args.chunk_size, shuffle=True)
+    chunks, chunk_lengths, targets, target_lengths = load_data(directory=input_directory,
+                                                               limit=args.chunk_size,
+                                                               shuffle=True)
+
     sys.stderr.write(TextColor.GREEN + "INFO: LOADED " + str(len(chunks)) +
                      " CHUNKS SUCCESSFULLY" + "\n" + TextColor.END )
     sys.stderr.flush()
