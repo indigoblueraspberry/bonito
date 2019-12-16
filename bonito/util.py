@@ -25,7 +25,6 @@ except ImportError:
     pass
 
 
-__dir__ = os.path.dirname(__file__)
 split_cigar = re.compile(r"(?P<len>\d+)(?P<op>\D+)")
 
 
@@ -62,22 +61,17 @@ def decode_ctc(predictions, labels):
     return ''.join([labels[b] for b, g in groupby(path) if b])
 
 
-def load_data(input_directory, shuffle=False, limit=None):
+def load_data(shuffle=False, limit=None, directory=None):
     """
     Load the training data
     """
-    chunks = np.load(os.path.join(input_directory, "chunks.npy"), mmap_mode='r')
-    chunk_lengths = np.load(os.path.join(input_directory, "chunk_lengths.npy"), mmap_mode='r')
-    targets = np.load(os.path.join(input_directory, "references.npy"), mmap_mode='r')
-    target_lengths = np.load(os.path.join(input_directory, "reference_lengths.npy"), mmap_mode='r')
+    if directory is None:
+        directory = os.path.join(os.path.dirname(__file__), "data")
 
-    sys.stderr.write(TextColor.GREEN + "INFO: TOTAL AVAILABLE CHUNKS: " + str(len(chunks)) + "\n" + TextColor.END)
-    sys.stderr.flush()
-
-    if limit > len(chunks):
-        limit = 0
-        sys.stderr.write(TextColor.YELLOW + "WARN: TOTAL AVAILABLE CHUNKS: " + str(len(chunks)) + " IS LESS THAN CHUNK LIMIT: " + str(limit) + ". WILL USE ALL CHUNKS.\n" + TextColor.END)
-        sys.stderr.flush()
+    chunks = np.load(os.path.join(directory, "chunks.npy"), mmap_mode='r')
+    chunk_lengths = np.load(os.path.join(directory, "chunk_lengths.npy"), mmap_mode='r')
+    targets = np.load(os.path.join(directory, "references.npy"), mmap_mode='r')
+    target_lengths = np.load(os.path.join(directory, "reference_lengths.npy"), mmap_mode='r')
 
     if limit > 0 and limit:
         chunks = chunks[:limit]
