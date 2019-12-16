@@ -86,8 +86,6 @@ def test(model, gpu_mode, test_loader, stride, alphabet):
     prediction_lengths = []
 
     sys.stderr.write(TextColor.YELLOW + "INFO: TEST STARTING" + "\n")
-    num_classes = 5
-
     with torch.no_grad():
         progress_bar = tqdm(total=len(test_loader), desc='Test loss', leave=True, ncols=100)
         for batch_idx, (data, out_lengths, target, lengths) in enumerate(test_loader, start=1):
@@ -101,7 +99,9 @@ def test(model, gpu_mode, test_loader, stride, alphabet):
 
             progress_bar.refresh()
             progress_bar.update(1)
-            progress_bar.set_description("Loss: " + str(test_loss.item()))
+            progress_bar.set_description("Test loss: " + str(test_loss))
+
+    sys.stderr.write(TextColor.GREEN + "\nValidation Loss:              %.4f" % (test_loss / batch_idx) + "\n")
 
     predictions = np.concatenate(predictions)
     lengths = np.concatenate(prediction_lengths)
@@ -117,7 +117,7 @@ def test(model, gpu_mode, test_loader, stride, alphabet):
     mean = np.mean(accuracies)
     median = np.median(accuracies)
 
-    sys.stderr.write(TextColor.GREEN + "\nValidation Loss:              %.4f" % (test_loss / batch_idx) + "\n")
+
     sys.stderr.write("Validation Accuracy (mean):   %.3f%%" % max(0, mean) + "\n")
     sys.stderr.write("Validation Accuracy (median): %.3f%%" % max(0, median) + "\n" + TextColor.END)
 
