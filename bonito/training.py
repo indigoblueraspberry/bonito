@@ -47,7 +47,7 @@ def train(log_interval, model, gpu_mode, train_loader, optimizer, epoch, stride,
     loss = 0
     model.train()
     sys.stderr.write(TextColor.BLUE + "INFO: TRAINING STARTING ON EPOCH: " + str(epoch) + "\n")
-    progress_bar = tqdm(total=len(train_loader), desc='Loss', leave=True, ncols=100)
+    progress_bar = tqdm(total=len(train_loader), desc='Train loss', leave=True, ncols=100)
     for batch_idx, (data, out_lengths, target, lengths) in enumerate(train_loader, start=1):
 
         optimizer.zero_grad()
@@ -89,7 +89,7 @@ def test(model, gpu_mode, test_loader, stride, alphabet):
     num_classes = 5
 
     with torch.no_grad():
-        progress_bar = tqdm(total=len(test_loader), desc='Loss', leave=True, ncols=100)
+        progress_bar = tqdm(total=len(test_loader), desc='Test loss', leave=True, ncols=100)
         for batch_idx, (data, out_lengths, target, lengths) in enumerate(test_loader, start=1):
             if gpu_mode:
                 data, target = data.cuda(), target.cuda()
@@ -102,8 +102,6 @@ def test(model, gpu_mode, test_loader, stride, alphabet):
             progress_bar.refresh()
             progress_bar.update(1)
             progress_bar.set_description("Loss: " + str(test_loss.item()))
-
-        progress_bar.close()
 
     predictions = np.concatenate(predictions)
     lengths = np.concatenate(prediction_lengths)
