@@ -72,7 +72,7 @@ def save_model(model, optimizer, epoch, file_name):
         'optimizer': optimizer.state_dict(),
         'epochs': epoch,
     }, file_name)
-    sys.stderr.write(TextColor.RED + "MODEL SAVED SUCCESSFULLY.\n" + TextColor.END)
+    sys.stderr.write(TextColor.RED + str(file_name) + " MODEL SAVED SUCCESSFULLY.\n\n" + TextColor.END)
     sys.stderr.flush()
 
 

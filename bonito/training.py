@@ -74,7 +74,7 @@ def train(log_interval, model, gpu_mode, train_loader, optimizer, epoch, stride,
         progress_bar.set_description("Loss: " + str(loss.item()))
     progress_bar.close()
 
-    sys.stderr.write(TextColor.GREEN + "\nINFO: TRAIN LOSS: " + str(loss.item()) + "\n")
+    sys.stderr.write(TextColor.GREEN + "INFO: TRAIN LOSS: " + str(loss.item()) + "\n")
 
     return loss.item(), time.perf_counter() - t0
 
@@ -106,7 +106,6 @@ def test(model, gpu_mode, test_loader, stride, alphabet):
             progress_bar.update(1)
             progress_bar.set_description("Test loss: " + str(test_loss.item()))
     progress_bar.close()
-    sys.stderr.write(TextColor.GREEN + "\nValidation Loss:              %.4f" % (test_loss / batch_idx) + "\n")
 
     predictions = np.concatenate(predictions)
     lengths = np.concatenate(prediction_lengths)
@@ -121,8 +120,7 @@ def test(model, gpu_mode, test_loader, stride, alphabet):
 
     mean = np.mean(accuracies)
     median = np.median(accuracies)
-
-
+    sys.stderr.write(TextColor.GREEN + "Validation Loss:              %.4f" % (test_loss / batch_idx) + "\n")
     sys.stderr.write("Validation Accuracy (mean):   %.3f%%" % max(0, mean) + "\n")
     sys.stderr.write("Validation Accuracy (median): %.3f%%" % max(0, median) + "\n" + TextColor.END)
 
