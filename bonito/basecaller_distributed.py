@@ -214,15 +214,12 @@ def cleanup():
     dist.destroy_process_group()
 
 
-def setup(rank, total_gpus, args, all_input_files, basecall):
+def setup(rank, total_gpus, args, all_input_files):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
 
-    print(rank, total_gpus)
-    exit()
-
     # initialize the process group
-    dist.init_process_group("gloo", rank=device_id, world_size=total_gpus)
+    dist.init_process_group("gloo", rank=rank, world_size=total_gpus)
 
     # Explicitly setting seed to make sure that models created in two processes
     # start from same random weights and biases.
@@ -247,7 +244,7 @@ def main(args):
             file_chunks.append(input_files[i:i + chunk_length])
 
         mp.spawn(setup,
-                 args=(total_gpu_devices, args, file_chunks, basecall),
+                 args=(total_gpu_devices, args, file_chunks),
                  nprocs=total_gpu_devices,
                  join=True)
 
