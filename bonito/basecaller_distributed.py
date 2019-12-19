@@ -157,7 +157,7 @@ def basecall(args, input_files, device_id):
             continue
 
         if count % 10 == 0 and count > 0:
-            sys.stderr.write(TextColor.GREEN + "\nINFO: FINISHED PROCESSING: " + count + " FILES ON DEVICE: " + device_id + TextColor.END)
+            sys.stderr.write(TextColor.GREEN + "\nINFO: FINISHED PROCESSING: " + str(count) + " FILES ON DEVICE: " + str(device_id) + TextColor.END)
 
         for read_id, raw_data in get_raw_data(fast5):
             if len(raw_data) <= args.chunksize:
