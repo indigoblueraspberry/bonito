@@ -130,6 +130,9 @@ def main(args):
     model, stride, alphabet = load_model(args.model, args.config, args.gpu_mode)
     model.eval()
 
+    if args.gpu_mode:
+        model = torch.nn.DataParallel(model).cuda()
+
     output_directory = handle_output_directory(os.path.abspath(args.output_directory))
     fasta_file = open(output_directory + args.file_prefix + ".fasta", 'w')
 
