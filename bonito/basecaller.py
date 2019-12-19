@@ -134,12 +134,8 @@ def chunks(file_names, chunk_length):
 
 def basecall(args, input_files, device_id):
     sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL ON DEVICE: " + device_id + "\n" + TextColor.END)
-    return device_id
-
-    sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL\n" + TextColor.END)
     model, stride, alphabet = load_model(args.model, args.config, args.gpu_mode)
     model = model.to(device_id)
-
     model.eval()
 
     output_directory = handle_output_directory(os.path.abspath(args.output_directory))
@@ -157,7 +153,7 @@ def basecall(args, input_files, device_id):
             sys.stderr.write(TextColor.YELLOW + "\nWARNING: FAST5 FILE ERROR: " + fast5 + ". SKIPPING THIS FILE.\n" + TextColor.END)
             continue
 
-        if count % 100 == 0 and count > 0:
+        if count % 10 == 0 and count > 0:
             sys.stderr.write(TextColor.GREEN + "\nINFO: FINISHED PROCESSING: " + count + " FILES ON DEVICE: " + device_id + TextColor.END)
 
         for read_id, raw_data in get_raw_data(fast5):
@@ -293,13 +289,6 @@ def argparser():
         default=64,
         type=int,
         help="Batch size for inference."
-    )
-    parser.add_argument(
-        "-cs",
-        "--chunks",
-        default=500,
-        type=int,
-        help="Number of chunks for inference."
     )
     parser.add_argument(
         "-ol",
