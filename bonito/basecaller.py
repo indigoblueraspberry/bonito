@@ -16,6 +16,7 @@ from bonito.TextColor import TextColor
 import torch
 import numpy as np
 from tqdm import tqdm
+import concurrent.futures
 from ont_fast5_api.fast5_interface import get_fast5_file
 
 
@@ -132,6 +133,11 @@ def chunks(file_names, chunk_length):
 
 
 def basecall(args, input_files, device_id):
+    print("DEVICE ID: ", device_id)
+    print("LENGTH OF INPUT: ", len(input_files))
+    return
+
+
     sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL\n" + TextColor.END)
     model, stride, alphabet = load_model(args.model, args.config, args.gpu_mode)
 
@@ -215,10 +221,15 @@ def main(args):
         for i in range(0, len(input_files), chunk_length):
             file_chunks.append(input_files[i:i + chunk_length])
 
-        print(device_ids)
-        print(len(input_files))
-        for c in file_chunks:
-            print(len(c))
+        # generate the dictionary in parallel
+        with concurrent.futures.ProcessPoolExecutor(max_workers=total_gpu_devices) as executor:
+            futures = [executor.submit(basecall, args, chunk, device_id) for device_id, chunk in enumerate(file_chunks)]
+            for fut in concurrent.futures.as_completed(futures):
+                if fut.exception() is None:
+                    first_pos, last_pos, sequence = fut.result()
+                else:
+                    sys.stderr.write(TextColor.RED + "ERROR: " + str(fut.exception()) + TextColor.END + "\n")
+                fut._result = None  # python issue 27144
     exit(0)
 
 
