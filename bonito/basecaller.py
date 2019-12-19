@@ -132,15 +132,15 @@ def chunks(file_names, chunk_length):
 
 
 def basecall(args, input_files, device_id):
-    sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL ON DEVICE: " + device_id + "\n" + TextColor.END)
+    sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL ON DEVICE: " + str(device_id) + "\n" + TextColor.END)
     model, stride, alphabet = load_model(args.model, args.config, args.gpu_mode)
     model.to(device_id)
     model.eval()
     model = DDP(model, device_ids=device_id)
-    sys.stderr.write(TextColor.GREEN + "INFO: LOADED MODEL ON DEVICE: " + device_id + "\n" + TextColor.END)
+    sys.stderr.write(TextColor.GREEN + "INFO: LOADED MODEL ON DEVICE: " + str(device_id) + "\n" + TextColor.END)
 
     output_directory = handle_output_directory(os.path.abspath(args.output_directory))
-    fasta_file = open(output_directory + args.file_prefix + "_" + device_id + ".fasta", 'w')
+    fasta_file = open(output_directory + args.file_prefix + "_" + str(device_id) + ".fasta", 'w')
 
     num_reads = 0
     num_chunks = 0
