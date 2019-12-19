@@ -1,6 +1,6 @@
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 
-from bonito import basecaller, evaluate, train, view
+from bonito import basecaller, evaluate, train, view, basecaller_distributed
 
 __version__ = '0.0.1'
 
@@ -22,7 +22,7 @@ def main():
     )
     subparsers.required = True
 
-    for module in ('basecaller', 'evaluate', 'train', 'view'):
+    for module in ('basecaller', 'basecaller_distributed', 'evaluate', 'train', 'view'):
         mod = globals()[module]
         p = subparsers.add_parser(module, parents=[mod.argparser()])
         p.set_defaults(func=mod.main)

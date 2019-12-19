@@ -15,7 +15,7 @@ from bonito.util import load_model, decode_ctc
 from bonito.TextColor import TextColor
 import torch
 import numpy as np
-from tqdm import tqdm
+from torch.nn.parallel import DistributedDataParallel as DDP
 from ont_fast5_api.fast5_interface import get_fast5_file
 
 
@@ -123,15 +123,24 @@ def handle_output_directory(output_dir):
     return output_dir
 
 
-def main(args):
+def chunks(file_names, chunk_length):
+    """Yield successive n-sized chunks from file_names."""
+    chunks = []
+    for i in range(0, len(file_names), chunk_length):
+        chunks.append(file_names[i:i + chunk_length])
+    return chunks
 
-    sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL\n" + TextColor.END)
-    sys.stderr.flush()
+
+def basecall(args, input_files, device_id):
+    sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL ON DEVICE: " + str(device_id) + "\n" + TextColor.END)
     model, stride, alphabet = load_model(args.model, args.config, args.gpu_mode)
+    model.to(device_id)
     model.eval()
+    model = DDP(model, device_ids=device_id)
+    sys.stderr.write(TextColor.GREEN + "INFO: LOADED MODEL ON DEVICE: " + str(device_id) + "\n" + TextColor.END)
 
     output_directory = handle_output_directory(os.path.abspath(args.output_directory))
-    fasta_file = open(output_directory + args.file_prefix + ".fasta", 'w')
+    fasta_file = open(output_directory + args.file_prefix + "_" + str(device_id) + ".fasta", 'w')
 
     num_reads = 0
     num_chunks = 0
@@ -140,17 +149,15 @@ def main(args):
     sys.stderr.write(TextColor.GREEN + "STARTING INFERENCE\n" + TextColor.END)
     sys.stderr.flush()
 
-    for fast5 in tqdm(glob("%s/*fast5" % args.reads_directory), ascii=True, ncols=100,
-                      desc=TextColor.BLUE + "INFERENCE"):
-        sys.stderr.write(TextColor.END)
-
+    for count, fast5 in enumerate(input_files):
         if not check_fast5(fast5):
             sys.stderr.write(TextColor.YELLOW + "\nWARNING: FAST5 FILE ERROR: " + fast5 + ". SKIPPING THIS FILE.\n" + TextColor.END)
-            sys.stderr.flush()
             continue
 
-        for read_id, raw_data in get_raw_data(fast5):
+        if count % 10 == 0 and count > 0:
+            sys.stderr.write(TextColor.GREEN + "\nINFO: FINISHED PROCESSING: " + count + " FILES ON DEVICE: " + device_id + TextColor.END)
 
+        for read_id, raw_data in get_raw_data(fast5):
             if len(raw_data) <= args.chunksize:
                 chunks = np.expand_dims(raw_data, axis=0)
             else:
@@ -167,7 +174,7 @@ def main(args):
                     batch = chunks[i*args.batchsize: (i+1)*args.batchsize]
                     tchunks = torch.tensor(batch)
                     if args.gpu_mode:
-                        tchunks = tchunks.cuda()
+                        tchunks = tchunks.to(device_id)
 
                     probs = torch.exp(model(tchunks))
                     predictions.append(probs.cpu())
@@ -187,7 +194,68 @@ def main(args):
 
     t1 = time.perf_counter()
     sys.stderr.write(TextColor.GREEN + "INFO: TOTAL READS: %s\n" % num_reads + TextColor.END)
-    sys.stderr.write(TextColor.GREEN +  "INFO: SAMPLES PER SECOND %.1E\n" % (num_chunks * args.chunksize / (t1 - t0)) + TextColor.END)
+    sys.stderr.write(TextColor.GREEN + "INFO: SAMPLES PER SECOND %.1E\n" % (num_chunks * args.chunksize / (t1 - t0)) + TextColor.END)
+
+
+import torch.distributed as dist
+from torch.multiprocessing import Process
+
+
+def cleanup():
+    dist.destroy_process_group()
+
+
+def setup(device_id, total_gpus, args, input_files, basecall):
+    os.environ['MASTER_ADDR'] = 'localhost'
+    os.environ['MASTER_PORT'] = '12355'
+
+    # initialize the process group
+    dist.init_process_group("gloo", rank=device_id, world_size=total_gpus)
+
+    # Explicitly setting seed to make sure that models created in two processes
+    # start from same random weights and biases.
+    torch.manual_seed(42)
+    basecall(args, input_files, device_id)
+    cleanup()
+
+def main(args):
+    if args.distributed:
+        # device ids
+        sys.stderr.write(TextColor.GREEN + "INFO: DISTRIBUTED SETUP\n" + TextColor.END)
+        total_gpu_devices = torch.cuda.device_count()
+
+        sys.stderr.write(TextColor.GREEN + "INFO: TOTAL GPU AVAILABLE: " + str(total_gpu_devices) + "\n" + TextColor.END)
+
+        # chunk the inputs
+        input_files = glob("%s/*fast5" % args.reads_directory)
+        chunk_length = int(len(input_files) / total_gpu_devices) + 1
+        file_chunks = []
+        for i in range(0, len(input_files), chunk_length):
+            file_chunks.append(input_files[i:i + chunk_length])
+
+
+        # run the processes
+        processes = []
+        for device_id in range(total_gpu_devices):
+            p = Process(target=setup, args=(device_id, total_gpu_devices, args, file_chunks[device_id], basecall))
+            p.start()
+            processes.append(p)
+
+        for p in processes:
+            p.join()
+
+        # # generate the dictionary in parallel
+        # with concurrent.futures.ProcessPoolExecutor(max_workers=total_gpu_devices) as executor:
+        #     futures = [executor.submit(basecall, args, chunk, device_id) for device_id, chunk in zip(device_ids, file_chunks)]
+        #     for fut in concurrent.futures.as_completed(futures):
+        #         if fut.exception() is None:
+        #             d_id = fut.result()
+        #         else:
+        #             sys.stderr.write(TextColor.RED + "ERROR: " + str(fut.exception()) + TextColor.END + "\n")
+        #         fut._result = None  # python issue 27144
+    exit(0)
+
+
 
 
 def argparser():
@@ -224,6 +292,13 @@ def argparser():
         help="If set then PyTorch will use GPUs for inference. CUDA required."
     )
     parser.add_argument(
+        "-d",
+        "--distributed",
+        default=False,
+        action='store_true',
+        help="If set then it will try to spawn one model per GPU."
+    )
+    parser.add_argument(
         "-o",
         "--output_directory",
         default="./bonito_outputs/",
@@ -243,13 +318,6 @@ def argparser():
         default=64,
         type=int,
         help="Batch size for inference."
-    )
-    parser.add_argument(
-        "-cs",
-        "--chunks",
-        default=500,
-        type=int,
-        help="Number of chunks for inference."
     )
     parser.add_argument(
         "-ol",
