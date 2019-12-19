@@ -134,6 +134,7 @@ def chunks(file_names, chunk_length):
 def basecall(args, input_files, device_id):
     sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL ON DEVICE: " + str(device_id) + "\n" + TextColor.END)
     model, stride, alphabet = load_model(args.model, args.config, args.gpu_mode)
+    print("GOING TO SET DEVICE")
     torch.cuda.set_device(device_id)
     print("DEVICE SET")
     model = model.cuda()
