@@ -204,7 +204,10 @@ def main(args):
         total_gpu_devices = torch.cuda.device_count()
 
         sys.stderr.write(TextColor.GREEN + "INFO: TOTAL GPU AVAILABLE: " + str(total_gpu_devices) + "\n" + TextColor.END)
-        device_ids = list(str('cuda:' + str(d_id) for d_id in range(0, total_gpu_devices)))
+
+        device_ids = []
+        for d_id in range(0, total_gpu_devices):
+            device_ids.append('cuda:' + str(d_id))
 
         # chunk the inputs
         input_files = glob("%s/*fast5" % args.reads_directory)
