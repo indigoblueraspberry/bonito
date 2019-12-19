@@ -119,9 +119,6 @@ def load_model(model_path, config_path, gpu_mode):
     model.load_state_dict(new_state_dict)
     model.cpu()
 
-    if gpu_mode:
-        model = torch.nn.DataParallel(model).cuda()
-
     stride = config['block'][0]['stride'][0]
     alphabet = config['labels']['labels']
 
