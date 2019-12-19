@@ -13,9 +13,9 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from bonito.util import load_model, decode_ctc
 from bonito.TextColor import TextColor
+import torch.distributed as dist
 import torch
 import numpy as np
-from torch.nn.parallel import DistributedDataParallel as DDP
 from ont_fast5_api.fast5_interface import get_fast5_file
 import torch.multiprocessing as mp
 
@@ -199,10 +199,6 @@ def basecall(args, input_files, device_id):
     sys.stderr.write(TextColor.GREEN + "INFO: SAMPLES PER SECOND %.1E\n" % (num_chunks * args.chunksize / (t1 - t0)) + TextColor.END)
 
 
-import torch.distributed as dist
-from torch.multiprocessing import Process
-
-
 def cleanup():
     dist.destroy_process_group()
 
@@ -240,30 +236,6 @@ def main(args):
                  args=(total_gpu_devices, args, file_chunks),
                  nprocs=total_gpu_devices,
                  join=True)
-
-
-        # run the processes
-        processes = []
-        for device_id in range(total_gpu_devices):
-            p = Process(target=setup, args=(device_id, total_gpu_devices, args, file_chunks[device_id], basecall))
-            p.start()
-            processes.append(p)
-
-        for p in processes:
-            p.join()
-
-        # # generate the dictionary in parallel
-        # with concurrent.futures.ProcessPoolExecutor(max_workers=total_gpu_devices) as executor:
-        #     futures = [executor.submit(basecall, args, chunk, device_id) for device_id, chunk in zip(device_ids, file_chunks)]
-        #     for fut in concurrent.futures.as_completed(futures):
-        #         if fut.exception() is None:
-        #             d_id = fut.result()
-        #         else:
-        #             sys.stderr.write(TextColor.RED + "ERROR: " + str(fut.exception()) + TextColor.END + "\n")
-        #         fut._result = None  # python issue 27144
-    exit(0)
-
-
 
 
 def argparser():
