@@ -17,6 +17,7 @@ import torch
 import numpy as np
 from torch.nn.parallel import DistributedDataParallel as DDP
 from ont_fast5_api.fast5_interface import get_fast5_file
+import torch.multiprocessing as mp
 
 
 def med_mad(x, factor=1.4826):
@@ -213,9 +214,12 @@ def cleanup():
     dist.destroy_process_group()
 
 
-def setup(device_id, total_gpus, args, input_files, basecall):
+def setup(rank, total_gpus, args, all_input_files, basecall):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
+
+    print(rank, total_gpus)
+    exit()
 
     # initialize the process group
     dist.init_process_group("gloo", rank=device_id, world_size=total_gpus)
@@ -223,8 +227,9 @@ def setup(device_id, total_gpus, args, input_files, basecall):
     # Explicitly setting seed to make sure that models created in two processes
     # start from same random weights and biases.
     torch.manual_seed(42)
-    basecall(args, input_files, device_id)
+    basecall(args, all_input_files[rank], rank)
     cleanup()
+
 
 def main(args):
     if args.distributed:
@@ -240,6 +245,11 @@ def main(args):
         file_chunks = []
         for i in range(0, len(input_files), chunk_length):
             file_chunks.append(input_files[i:i + chunk_length])
+
+        mp.spawn(setup,
+                 args=(total_gpu_devices, args, file_chunks, basecall),
+                 nprocs=total_gpu_devices,
+                 join=True)
 
 
         # run the processes
