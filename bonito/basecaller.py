@@ -133,9 +133,9 @@ def chunks(file_names, chunk_length):
 
 
 def basecall(args, input_files, device_id):
-    sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL ON DEVICE: " + device_id + TextColor.END)
+    sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL ON DEVICE: " + device_id + "\n" + TextColor.END)
     return device_id
-    
+
     sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL\n" + TextColor.END)
     model, stride, alphabet = load_model(args.model, args.config, args.gpu_mode)
     model = model.to(device_id)
