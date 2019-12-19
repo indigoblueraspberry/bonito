@@ -138,7 +138,7 @@ def basecall(args, input_files, device_id):
     print("GOING TO SET DEVICE")
     torch.cuda.set_device(device_id)
     print("DEVICE SET")
-    model = model.cuda()
+    model.to(device_id)
     print("MODEL MOVED TO CUDA")
     model.eval()
     print("MODEL EVAL SET")
