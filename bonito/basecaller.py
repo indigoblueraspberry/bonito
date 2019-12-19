@@ -125,9 +125,20 @@ def handle_output_directory(output_dir):
 
 def main(args):
 
+    if args.distributed:
+        sys.stderr.write(TextColor.GREEN + "INFO: DISTRIBUTED SETUP\n" + TextColor.END)
+        total_gpu_devices = torch.cuda.device_count()
+        sys.stderr.write(TextColor.GREEN + "INFO: TOTAL GPU AVAILABLE: " + str(total_gpu_devices) + TextColor.END)
+        device_ids = torch.cuda.current_device()
+        print(device_ids)
+    exit(0)
+
     sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL\n" + TextColor.END)
-    sys.stderr.flush()
     model, stride, alphabet = load_model(args.model, args.config, args.gpu_mode)
+
+    if args.gpu_mode:
+        model = torch.nn.DataParallel(model).cuda()
+
     model.eval()
 
     output_directory = handle_output_directory(os.path.abspath(args.output_directory))
@@ -222,6 +233,13 @@ def argparser():
         default=False,
         action='store_true',
         help="If set then PyTorch will use GPUs for inference. CUDA required."
+    )
+    parser.add_argument(
+        "-d",
+        "--distributed",
+        default=False,
+        action='store_true',
+        help="If set then it will try to spawn one model per GPU."
     )
     parser.add_argument(
         "-o",
