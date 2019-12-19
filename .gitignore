@@ -14,3 +14,4 @@ dist/
 *.fast*
 *.sam
 *.idea/
+output/
