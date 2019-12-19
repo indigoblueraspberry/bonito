@@ -123,20 +123,15 @@ def handle_output_directory(output_dir):
     return output_dir
 
 
-def main(args):
+def chunks(file_names, chunk_length):
+    """Yield successive n-sized chunks from file_names."""
+    chunks = []
+    for i in range(0, len(file_names), chunk_length):
+        chunks.append(file_names[i:i + chunk_length])
+    return chunks
 
-    if args.distributed:
-        sys.stderr.write(TextColor.GREEN + "INFO: DISTRIBUTED SETUP\n" + TextColor.END)
-        total_gpu_devices = torch.cuda.device_count()
-        sys.stderr.write(TextColor.GREEN + "INFO: TOTAL GPU AVAILABLE: " + str(total_gpu_devices) + "\n" + TextColor.END)
-        device_ids = list(range(0, total_gpu_devices))
 
-        input_files = glob("%s/*fast5" % args.reads_directory)
-        print(input_files)
-        print(device_ids)
-        print(len(input_files))
-    exit(0)
-
+def basecall(args, input_files, device_id):
     sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL\n" + TextColor.END)
     model, stride, alphabet = load_model(args.model, args.config, args.gpu_mode)
 
@@ -155,8 +150,7 @@ def main(args):
     sys.stderr.write(TextColor.GREEN + "STARTING INFERENCE\n" + TextColor.END)
     sys.stderr.flush()
 
-    for fast5 in tqdm(glob("%s/*fast5" % args.reads_directory), ascii=True, ncols=100,
-                      desc=TextColor.BLUE + "INFERENCE"):
+    for fast5 in tqdm(input_files, ascii=True, ncols=100, desc=TextColor.BLUE + "INFERENCE"):
         sys.stderr.write(TextColor.END)
 
         if not check_fast5(fast5):
@@ -202,7 +196,32 @@ def main(args):
 
     t1 = time.perf_counter()
     sys.stderr.write(TextColor.GREEN + "INFO: TOTAL READS: %s\n" % num_reads + TextColor.END)
-    sys.stderr.write(TextColor.GREEN +  "INFO: SAMPLES PER SECOND %.1E\n" % (num_chunks * args.chunksize / (t1 - t0)) + TextColor.END)
+    sys.stderr.write(TextColor.GREEN + "INFO: SAMPLES PER SECOND %.1E\n" % (num_chunks * args.chunksize / (t1 - t0)) + TextColor.END)
+
+
+def main(args):
+    if args.distributed:
+        # device ids
+        sys.stderr.write(TextColor.GREEN + "INFO: DISTRIBUTED SETUP\n" + TextColor.END)
+        total_gpu_devices = torch.cuda.device_count()
+
+        sys.stderr.write(TextColor.GREEN + "INFO: TOTAL GPU AVAILABLE: " + str(total_gpu_devices) + "\n" + TextColor.END)
+        device_ids = list(range(0, total_gpu_devices))
+
+        # chunk the inputs
+        input_files = glob("%s/*fast5" % args.reads_directory)
+        chunk_length = int(len(input_files) / total_gpu_devices) + 1
+        file_chunks = []
+        for i in range(0, len(input_files), chunk_length):
+            file_chunks.append(input_files[i:i + chunk_length])
+
+        print(device_ids)
+        print(len(input_files))
+        for c in file_chunks:
+            print(len(c))
+    exit(0)
+
+
 
 
 def argparser():
