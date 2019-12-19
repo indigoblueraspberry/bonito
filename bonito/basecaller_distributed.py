@@ -16,6 +16,7 @@ from bonito.TextColor import TextColor
 import torch.distributed as dist
 import torch
 import numpy as np
+from torch.nn.parallel import DistributedDataParallel
 from ont_fast5_api.fast5_interface import get_fast5_file
 import torch.multiprocessing as mp
 
@@ -138,7 +139,7 @@ def basecall(args, input_files, device_id):
     torch.cuda.set_device(device_id)
     model.to(device_id)
     model.eval()
-    model = DDP(model, device_ids=[device_id])
+    model = DistributedDataParallel(model, device_ids=[device_id])
     sys.stderr.write(TextColor.GREEN + "INFO: LOADED MODEL ON DEVICE: " + str(device_id) + "\n" + TextColor.END)
 
     output_directory = handle_output_directory(os.path.abspath(args.output_directory))
