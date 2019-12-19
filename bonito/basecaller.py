@@ -201,6 +201,10 @@ import torch.distributed as dist
 from torch.multiprocessing import Process
 
 
+def cleanup():
+    dist.destroy_process_group()
+
+
 def setup(device_id, total_gpus, args, input_files, basecall):
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
@@ -212,10 +216,10 @@ def setup(device_id, total_gpus, args, input_files, basecall):
     # start from same random weights and biases.
     torch.manual_seed(42)
     basecall(args, input_files, device_id)
+    cleanup()
 
 
-def cleanup():
-    dist.destroy_process_group()
+
 
 
 def main(args):
