@@ -128,9 +128,13 @@ def main(args):
     if args.distributed:
         sys.stderr.write(TextColor.GREEN + "INFO: DISTRIBUTED SETUP\n" + TextColor.END)
         total_gpu_devices = torch.cuda.device_count()
-        sys.stderr.write(TextColor.GREEN + "INFO: TOTAL GPU AVAILABLE: " + str(total_gpu_devices) + TextColor.END)
-        device_ids = torch.cuda.current_device()
+        sys.stderr.write(TextColor.GREEN + "INFO: TOTAL GPU AVAILABLE: " + str(total_gpu_devices) + "\n" + TextColor.END)
+        device_ids = list(range(0, total_gpu_devices))
+
+        input_files = glob("%s/*fast5" % args.reads_directory)
+        print(input_files)
         print(device_ids)
+        print(len(input_files))
     exit(0)
 
     sys.stderr.write(TextColor.GREEN + "INFO: LOADING MODEL\n" + TextColor.END)
