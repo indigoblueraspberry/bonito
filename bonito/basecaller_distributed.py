@@ -211,6 +211,7 @@ def setup(rank, total_gpus, args, all_input_files):
     # initialize the process group
     dist.init_process_group("gloo", rank=rank, world_size=total_gpus)
 
+    print("RANK: ", rank)
     # Explicitly setting seed to make sure that models created in two processes
     # start from same random weights and biases.
     torch.manual_seed(42)
