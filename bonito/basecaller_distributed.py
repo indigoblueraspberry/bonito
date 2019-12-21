@@ -228,7 +228,7 @@ def main(args):
         sys.stderr.write(TextColor.GREEN + "INFO: TOTAL GPU AVAILABLE: " + str(total_gpu_devices) + "\n" + TextColor.END)
 
         # chunk the inputs
-        input_files = glob("%s/*fast5" % args.reads_directory)
+        input_files = glob("%s/*fast5" % args.reads_directory, recursive=True)
         print(input_files)
         chunk_length = int(len(input_files) / total_gpu_devices) + 1
         file_chunks = []
