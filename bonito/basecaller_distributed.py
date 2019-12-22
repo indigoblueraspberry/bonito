@@ -150,15 +150,11 @@ def basecall(args, input_files, device_id):
 
     t0 = time.perf_counter()
     sys.stderr.write(TextColor.GREEN + "STARTING INFERENCE\n" + TextColor.END)
-    sys.stderr.flush()
-
+    st = time.time()
     for count, fast5 in enumerate(input_files):
         if not check_fast5(fast5):
             sys.stderr.write(TextColor.YELLOW + "\nWARNING: FAST5 FILE ERROR: " + fast5 + ". SKIPPING THIS FILE.\n" + TextColor.END)
             continue
-
-        if count % 10 == 0 and count > 0:
-            sys.stderr.write(TextColor.GREEN + "\nINFO: FINISHED PROCESSING: " + str(count) + " FILES ON DEVICE: " + str(device_id) + TextColor.END)
 
         for read_id, raw_data in get_raw_data(fast5):
             if len(raw_data) <= args.chunksize:
@@ -195,9 +191,14 @@ def basecall(args, input_files, device_id):
                     fasta_file.write(">"+str(read_id) + "\n")
                     fasta_file.write('\n'.join(wrap(sequence, 100)) + "\n")
 
+        ct = time.time()
+        sys.stderr.write(TextColor.GREEN + "\nINFO: FINISHED PROCESSING: " + str(count) + "/" + str(len(input_files))
+                         + " FILES. DEVICE: " + str(device_id) + " ELAPSED TIME: " + str(ct-st) + "\n" + TextColor.END)
+
     t1 = time.perf_counter()
     sys.stderr.write(TextColor.GREEN + "INFO: TOTAL READS: %s\n" % num_reads + TextColor.END)
-    sys.stderr.write(TextColor.GREEN + "INFO: SAMPLES PER SECOND %.1E\n" % (num_chunks * args.chunksize / (t1 - t0)) + TextColor.END)
+    sys.stderr.write(TextColor.GREEN + "INFO: SAMPLES PER SECOND %.1E\n"
+                     % (num_chunks * args.chunksize / (t1 - t0)) + TextColor.END)
 
 
 def cleanup():
@@ -211,7 +212,6 @@ def setup(rank, total_gpus, args, all_input_files):
     # initialize the process group
     dist.init_process_group("gloo", rank=rank, world_size=total_gpus)
 
-    print("RANK: ", rank)
     # Explicitly setting seed to make sure that models created in two processes
     # start from same random weights and biases.
     torch.manual_seed(42)
