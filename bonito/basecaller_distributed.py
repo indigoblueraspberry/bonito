@@ -153,7 +153,7 @@ def basecall(args, input_files, device_id):
     st = time.time()
     for count, fast5 in enumerate(input_files):
         if not check_fast5(fast5):
-            sys.stderr.write(TextColor.YELLOW + "\nWARNING: FAST5 FILE ERROR: " + fast5 + ". SKIPPING THIS FILE.\n" + TextColor.END)
+            sys.stderr.write(TextColor.YELLOW + "WARNING: FAST5 FILE ERROR: " + fast5 + ". SKIPPING.\n" + TextColor.END)
             continue
 
         for read_id, raw_data in get_raw_data(fast5):
@@ -192,7 +192,7 @@ def basecall(args, input_files, device_id):
                     fasta_file.write('\n'.join(wrap(sequence, 100)) + "\n")
 
         ct = time.time()
-        sys.stderr.write(TextColor.GREEN + "\nINFO: FINISHED PROCESSING: " + str(count) + "/" + str(len(input_files))
+        sys.stderr.write(TextColor.GREEN + "INFO: FINISHED PROCESSING: " + str(count) + "/" + str(len(input_files))
                          + " FILES. DEVICE: " + str(device_id) + " ELAPSED TIME: " + str(ct-st) + "\n" + TextColor.END)
 
     t1 = time.perf_counter()

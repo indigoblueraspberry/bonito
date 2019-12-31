@@ -172,10 +172,12 @@ class Model(Module):
         super(Model, self).__init__()
         self.stride = config['block'][0]['stride'][0]
         self.alphabet = config['labels']['labels']
+        self.rles = int(config['labels']['rles'])
         self.features = config['block'][-1]['filters']
         self.encoder = Encoder(config)
-        self.decoder = Decoder(self.features, len(self.alphabet))
+        self.decoder_base = Decoder(self.features, len(self.alphabet))
+        self.decoder_rle = Decoder(self.features, self.rles)
 
     def forward(self, x):
         encoded = self.encoder(x)
-        return self.decoder(encoded)
+        return self.decoder_base(encoded), self.decoder_rle(encoded)

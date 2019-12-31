@@ -2,7 +2,7 @@ model = "QuartzNet"
 
 [labels]
 labels = ["N", "A", "C", "G", "T"]
-
+rles = 100
 [input]
 features = 1
 

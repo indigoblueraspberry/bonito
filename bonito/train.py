@@ -91,9 +91,8 @@ def main(args):
                      " CHUNKS FROM: " + str(input_directory) + "\n" + TextColor.END)
     sys.stderr.flush()
 
-    chunks, chunk_lengths, targets, target_lengths = load_data(directory=input_directory,
-                                                               limit=args.chunk_size,
-                                                               shuffle=True)
+    chunks, chunk_lengths, targets, target_lengths, rle_reference_bases, rles_reference_rles, rle_reference_lengths = \
+        load_data(directory=input_directory, limit=args.chunk_size, shuffle=True)
 
     sys.stderr.write(TextColor.GREEN + "INFO: LOADED " + str(len(chunks)) +
                      " CHUNKS SUCCESSFULLY" + "\n" + TextColor.END )
@@ -105,8 +104,12 @@ def main(args):
                      + "% TEST: " + str(int(100-args.validation_split * 100)) + "%\n" + TextColor.END)
     sys.stderr.flush()
 
-    train_dataset = ChunkDataSet(chunks[:split], chunk_lengths[:split], targets[:split], target_lengths[:split])
-    test_dataset = ChunkDataSet(chunks[split:], chunk_lengths[split:], targets[split:], target_lengths[split:])
+    train_dataset = ChunkDataSet(chunks[:split], chunk_lengths[:split], targets[:split], target_lengths[:split],
+                                 rle_reference_bases[:split], rles_reference_rles[:split], rle_reference_lengths[:split])
+
+    test_dataset = ChunkDataSet(chunks[split:], chunk_lengths[split:], targets[split:], target_lengths[split:],
+                                rle_reference_bases[split:], rles_reference_rles[split:], rle_reference_lengths[split:])
+
     sys.stderr.write(TextColor.PURPLE + "INFO: TOTAL TRAIN CHUNKS:\t" + str(len(train_dataset)) + "\n" + TextColor.END)
     sys.stderr.write(TextColor.PURPLE + "INFO: TOTAL TEST CHUNKS:\t" + str(len(test_dataset)) + "\n" + TextColor.END)
     sys.stderr.flush()

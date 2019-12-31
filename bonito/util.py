@@ -61,6 +61,21 @@ def decode_ctc(predictions, labels):
     return ''.join([labels[b] for b, g in groupby(path) if b])
 
 
+def decode_ctc_rle(predictions_bases, predictions_rles, labels):
+    """
+    Argmax decoder with collapsing repeats
+    """
+    path_bases = np.argmax(predictions_bases, axis=1)
+    path_rles = np.argmax(predictions_rles, axis=1)
+    bases = [labels[b] for b, g in groupby(path_bases) if b]
+    rles = [r for r, g in groupby(path_rles) if r]
+    sequence = ''
+    for i in range(0, min(len(bases), len(rles))):
+        sequence += bases[i] * rles[i]
+
+    return sequence
+
+
 def load_data(shuffle=False, limit=None, directory=None):
     """
     Load the training data
@@ -73,11 +88,19 @@ def load_data(shuffle=False, limit=None, directory=None):
     targets = np.load(os.path.join(directory, "references.npy"), mmap_mode='r')
     target_lengths = np.load(os.path.join(directory, "reference_lengths.npy"), mmap_mode='r')
 
+    rle_reference_bases = np.load(os.path.join(directory, "rle_reference_bases.npy"), mmap_mode='r')
+    rles_reference_rles= np.load(os.path.join(directory, "rle_reference_rles.npy"), mmap_mode='r')
+    rle_reference_lengths = np.load(os.path.join(directory, "rle_reference_lengths.npy"), mmap_mode='r')
+
     if limit > 0 and limit:
         chunks = chunks[:limit]
         chunk_lengths = chunk_lengths[:limit]
         targets = targets[:limit]
         target_lengths = target_lengths[:limit]
+
+        rle_reference_bases = rle_reference_bases[:limit]
+        rles_reference_rles = rles_reference_rles[:limit]
+        rle_reference_lengths = rle_reference_lengths[:limit]
 
     if shuffle:
         shuf = np.random.permutation(chunks.shape[0])
@@ -86,7 +109,11 @@ def load_data(shuffle=False, limit=None, directory=None):
         targets = targets[shuf]
         target_lengths = target_lengths[shuf]
 
-    return chunks, chunk_lengths, targets, target_lengths
+        rle_reference_bases = rle_reference_bases[shuf]
+        rles_reference_rles = rles_reference_rles[shuf]
+        rle_reference_lengths = rle_reference_lengths[shuf]
+
+    return chunks, chunk_lengths, targets, target_lengths, rle_reference_bases, rles_reference_rles, rle_reference_lengths
 
 
 def load_model(model_path, config_path, gpu_mode):
