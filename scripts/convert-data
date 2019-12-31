@@ -37,9 +37,6 @@ def get_reads(tfile):
     """ get each dataset per read """
     with h5py.File(tfile, 'r') as training_file:
         for read_id in np.random.permutation(training_file['Reads']):
-            if read_id != '6b39994b-80ef-4068-a3bc-a3e38931bee8':
-                continue
-
             read = training_file['Reads/%s' % read_id]
             reference = read['Reference'][:]
             pointers = read['Ref_to_signal'][:]
