@@ -105,7 +105,10 @@ def test(model, gpu_mode, test_loader, stride, alphabet):
         progress_bar = tqdm(total=len(test_loader), desc='Test loss', leave=True, ncols=100)
         for batch_idx, (data, out_lengths, target, lengths, rle_bases, rle_rles, rle_lengths) in enumerate(test_loader, start=1):
             if gpu_mode:
-                data, target = data.cuda(), target.cuda()
+                data = data.cuda()
+                target = target.cuda()
+                rle_bases = rle_bases.cuda()
+                rle_rles = rle_rles.cuda()
 
             log_probs_base, log_probs_rle = model(data)
             if test_loss is None:
