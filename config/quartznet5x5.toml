@@ -1,7 +1,7 @@
 model = "QuartzNet"
 
 [labels]
-labels = ["N", "A", "C", "G", "T"]
+labels = ['N', 'A', 'AA', 'AAA', 'AAAA', 'AAAAA', 'AAAAAA', 'AAAAAAA', 'AAAAAAAA', 'AAAAAAAAA', 'AAAAAAAAAA', 'C', 'CC', 'CCC', 'CCCC', 'CCCCC', 'CCCCCC', 'CCCCCCC', 'CCCCCCCC', 'CCCCCCCCC', 'CCCCCCCCCC', 'G', 'GG', 'GGG', 'GGGG', 'GGGGG', 'GGGGGG', 'GGGGGGG', 'GGGGGGGG', 'GGGGGGGGG', 'GGGGGGGGGG', 'T', 'TT', 'TTT', 'TTTT', 'TTTTT', 'TTTTTT', 'TTTTTTT', 'TTTTTTTT', 'TTTTTTTTT', 'TTTTTTTTTT']
 
 [input]
 features = 1
