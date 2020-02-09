@@ -34,7 +34,7 @@ def main(args):
 				print('Labels are not ACTG; current label = {}'.format(label[i]))
 				break
 			if labels[i] != curr_label or count >= args.length_limit-1:
-				new_labels.append(curr_label*10+count)
+				new_labels.append(curr_label*args.length_limit+count)
 				new_segments.append(segments[i])
 				curr_label = labels[i]
 				count = 0
